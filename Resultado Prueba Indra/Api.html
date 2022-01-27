@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba 1</title>
+</head>
+<script type="text/javascript">
+    var indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
+    var dataBase = null;
+    dataBase = indexedDB.open("database", 1);
+    dataBase.onupgradeneeded = function (e) {
+        var active = dataBase.result;
+        var object = active.createObjectStore("products", {keyPath: 'id', autoIncrement: true});
+        object.createIndex('by_number1', 'number1', {unique: false});
+        object.createIndex('by_number2', 'number2', {unique: false});
+        object.createIndex('by_product', 'product', {unique: false});
+    };
+
+    dataBase.onsuccess = function (e) {
+        //alert('Database loaded');
+        loadAll();
+    };
+
+    dataBase.onerror = function (e) {
+        alert('Error loading database');
+    };
+
+    function add() {
+        multiplica(document.querySelector("#number1").value,document.querySelector("#number2").value);
+        var active = dataBase.result;
+        var data = active.transaction(["products"], "readwrite");
+        var object = data.objectStore("products");
+
+        var request = object.put({
+            number1: document.querySelector("#number1").value,
+            number2: document.querySelector("#number2").value,
+            product: document.querySelector("#product").value
+        });
+
+        request.onerror = function (e) {
+            alert(request.error.name + '\n\n' + request.error.message);
+        };
+
+        data.oncomplete = function (e) {
+
+            document.querySelector('#number1').value = '';
+            document.querySelector('#number2').value = '';
+            document.querySelector('#product').value = '';
+            alert('Object successfully added');
+            loadAll();
+        };
+
+    }
+            function multiplica(c, d) {
+                var result = BigInt(c*d).toString().replace('n','');
+                document.querySelector('#product').value = result;
+            }
+            function Delete(id) {
+
+                var active = dataBase.result;
+                var data = active.transaction(["products"],"readwrite");
+                var object = data.objectStore("products");    
+                var request = object.delete(parseInt(id));
+                request.onsuccess = function () {
+                    loadAll();
+                };
+                    // comprobar el error
+                request.onerror = function (e) {
+                alert('ERROR AL BORRAR\n\n' + request.error.name + '\n\n' + request.error.message);
+                };
+            }
+            function loadAll() {
+                var active = dataBase.result;
+                var data = active.transaction(["products"], "readonly");
+                var object = data.objectStore("products");
+
+                var elements = [];
+
+                object.openCursor().onsuccess = function (e) {
+
+                    var result = e.target.result;
+
+                    if (result === null) {
+                        return;
+                    }
+
+                    elements.push(result.value);
+                    result.continue();
+
+                };
+
+                data.oncomplete = function () {
+
+                    var outerHTML = '';
+
+                    for (var key in elements) {
+
+                        outerHTML += '\n\
+                        <tr>\n\
+                            <td>' + elements[key].id + '</td>\n\
+                            <td>' + elements[key].number1 + '</td>\n\
+                            <td>' + elements[key].number2 + '</td>\n\
+                            <td>' + elements[key].product + '</td>\n\
+                            <td>\n\
+                                <button type="button" onclick="Delete(' + elements[key].id + ')">Delete</button>\n\
+                            </td>\n\
+                            </tr>';
+
+                    }
+
+                    elements = [];
+                    document.querySelector("#elementsList").innerHTML = outerHTML;
+                };
+            }
+
+</script>
+<body>
+        <input type="text" id="number1" placeholder="Enter number 1" />
+        <input type="text" id="number2" placeholder="Enter number 2" />
+        <input type="text" id="product" disabled placeholder="the products is" />
+        <button type="button" onclick="add();">Calculate</button>
+        <hr>
+        <div id="elements">
+            <table>
+                <caption>Products</caption>
+                <thead>
+                    <tr>
+                        <th>id</th>
+                        <th>Number 1</th>
+                        <th>Number 2</th>
+                        <th>Product</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="elementsList">
+                    <tr>
+                        <td colspan="3">Not elements to show</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+</body>
+<style>
+    table{
+        border: 1px black solid;
+    }
+    th{
+        border: 1px black solid;
+    }
+    td{
+        border: 1px black solid;
+    }
+</style>
+</html>
